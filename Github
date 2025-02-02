@@ -1,1 +1,103 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Creating a sample dataset
+np.random.seed(42)
+data = {
+    'Age': np.random.randint(18, 60, 100),
+    'Salary': np.random.randint(30000, 100000, 100),
+    'Gender': np.random.choice(['Male', 'Female'], 100),
+    'Purchased': np.random.choice([0, 1], 100)  # Binary classification target
+}
+
+df = pd.DataFrame(data)
+
+# Introduce some missing values
+df.loc[np.random.choice(df.index, 10, replace=False), 'Salary'] = np.nan
+df.loc[np.random.choice(df.index, 5, replace=False), 'Age'] = np.nan
+
+# Display first few rows
+print(df.head())
+
+# Handling missing values
+imputer = SimpleImputer(strategy='median')
+df[['Age', 'Salary']] = imputer.fit_transform(df[['Age', 'Salary']])
+
+# Encoding categorical variables
+encoder = LabelEncoder()
+df['Gender'] = encoder.fit_transform(df['Gender'])
+
+# Checking for any remaining missing values
+print(df.isnull().sum())
+
+print(df.describe())
+
+plt.figure(figsize=(10, 4))
+sns.histplot(df['Age'], bins=10, kde=True, color='blue')
+plt.title('Age Distribution')
+plt.show()
+
+plt.figure(figsize=(10, 4))
+sns.histplot(df['Salary'], bins=10, kde=True, color='green')
+plt.title('Salary Distribution')
+plt.show()
+
+plt.figure(figsize=(8,6))
+sns.heatmap(df.corr(), annot=True, cmap='coolwarm', fmt=".2f")
+plt.title("Feature Correlation")
+plt.show()
+
+X = df.drop(columns=['Purchased'])
+y = df['Purchased']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Define the model
+model = RandomForestClassifier(random_state=42)
+
+# Hyperparameter tuning
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 10, 20],
+    'min_samples_split': [2, 5, 10]
+}
+
+grid_search = GridSearchCV(model, param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+grid_search.fit(X_train, y_train)
+
+# Best model
+best_model = grid_search.best_estimator_
+
+# Training the best model
+best_model.fit(X_train, y_train)
+
+y_pred = best_model.predict(X_test)
+
+# Accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy:.4f}')
+
+# Classification Report
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+# Confusion Matrix
+plt.figure(figsize=(6,4))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
 
